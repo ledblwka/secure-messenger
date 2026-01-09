@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: secure-messenger
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+    healthCheckPath: /
+    autoDeploy: true
+
+databases:
+  - name: messenger-db
+    plan: free
+    databaseName: messenger
+    user: messenger_user
