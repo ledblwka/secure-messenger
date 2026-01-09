@@ -1,89 +1,78 @@
-// frontend/js/chat.js
-class SecureMessenger {
-    constructor() {
-        this.socket = null;
-        this.currentUser = null;
+// web/static/chat.js
+class ChatApp {
+    constructor(username) {
+        this.username = username;
+        this.ws = null;
         this.currentRecipient = 'all';
-        this.typingTimeout = null;
         this.isTyping = false;
+        this.typingTimeout = null;
+        this.connected = false;
         
         this.init();
     }
     
     init() {
-        this.checkAuth();
-        this.bindEvents();
-        this.loadUIState();
-    }
-    
-    // Проверка авторизации
-    checkAuth() {
-        this.currentUser = localStorage.getItem('messenger_username');
-        const token = localStorage.getItem('messenger_token');
-        
-        if (!this.currentUser || !token) {
-            this.redirectToLogin();
-            return;
-        }
-        
         this.connectWebSocket();
-        this.updateUI();
-        this.loadRecentMessages();
-        this.loadOnlineUsers();
+        this.bindEvents();
+        this.loadInitialData();
         
-        // Периодически обновляем список пользователей
-        setInterval(() => this.loadOnlineUsers(), 30000);
+        // Периодическая проверка соединения
+        setInterval(() => {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.sendPing();
+            }
+        }, 30000);
     }
     
-    // Подключение к WebSocket
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws?token=${localStorage.getItem('messenger_token')}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws?user=${encodeURIComponent(this.username)}`;
         
-        this.socket = new WebSocket(wsUrl);
+        this.ws = new WebSocket(wsUrl);
         
-        this.socket.onopen = () => {
+        this.ws.onopen = () => {
             console.log('✅ WebSocket подключен');
+            this.connected = true;
             this.updateConnectionStatus(true);
-            this.sendSystemMessage('Вы подключились к чату');
+            this.showSystemMessage('Вы подключились к чату');
         };
         
-        this.socket.onmessage = (event) => {
+        this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                this.handleWebSocketMessage(data);
+                this.handleMessage(data);
             } catch (error) {
                 console.error('Ошибка парсинга сообщения:', error);
             }
         };
         
-        this.socket.onclose = () => {
+        this.ws.onclose = () => {
             console.log('❌ WebSocket отключен');
+            this.connected = false;
             this.updateConnectionStatus(false);
             
-            // Пытаемся переподключиться через 3 секунды
+            // Переподключение через 3 секунды
             setTimeout(() => {
-                if (this.currentUser) {
+                if (this.username) {
                     this.connectWebSocket();
                 }
             }, 3000);
         };
         
-        this.socket.onerror = (error) => {
+        this.ws.onerror = (error) => {
             console.error('WebSocket ошибка:', error);
             this.showNotification('Ошибка соединения', 'error');
         };
     }
     
-    // Обработка сообщений от WebSocket
-    handleWebSocketMessage(data) {
+    handleMessage(data) {
         switch (data.type) {
             case 'message':
-                this.displayMessage(data.message);
+                this.displayMessage(data);
                 break;
                 
             case 'user_joined':
-                this.addUserToList(data.user);
+                this.addUserToList(data.username);
                 this.showSystemMessage(`${data.username} присоединился(ась) к чату`);
                 break;
                 
@@ -97,7 +86,7 @@ class SecureMessenger {
                 break;
                 
             case 'typing':
-                this.showTypingIndicator(data.username, data.isTyping);
+                this.showTypingIndicator(data.sender, data.isTyping);
                 break;
                 
             case 'error':
@@ -110,176 +99,182 @@ class SecureMessenger {
         }
     }
     
-    // Отправка сообщения
-    async sendMessage() {
+    sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const content = messageInput.value.trim();
         
-        if (!content) return;
-        
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            const message = {
-                type: 'message',
-                content: content,
-                recipient: this.currentRecipient,
-                timestamp: new Date().toISOString()
-            };
-            
-            this.socket.send(JSON.stringify(message));
-            
-            // Показываем сообщение локально сразу
-            this.displayMessage({
-                sender: this.currentUser,
-                content: content,
-                recipient: this.currentRecipient,
-                timestamp: new Date().toISOString(),
-                isOwn: true
-            });
-            
-            // Очищаем поле ввода
-            messageInput.value = '';
-            this.updateCharCount();
-            
-            // Сохраняем в историю
-            this.saveMessageToHistory({
-                ...message,
-                sender: this.currentUser,
-                isOwn: true
-            });
-        } else {
-            this.showNotification('Нет соединения с сервером', 'error');
+        if (!content) {
+            this.showNotification('Введите сообщение', 'warning');
+            return;
         }
+        
+        if (!this.connected) {
+            this.showNotification('Нет соединения с сервером', 'error');
+            return;
+        }
+        
+        const message = {
+            type: 'message',
+            sender: this.username,
+            recipient: this.currentRecipient,
+            content: content,
+            timestamp: new Date().toISOString()
+        };
+        
+        this.ws.send(JSON.stringify(message));
+        
+        // Показываем сообщение локально
+        this.displayMessage({
+            ...message,
+            isOwn: true
+        });
+        
+        // Очищаем поле ввода
+        messageInput.value = '';
+        this.updateCharCount();
+        
+        // Сбрасываем индикатор набора
+        this.sendTypingIndicator(false);
     }
     
-    // Отображение сообщения в чате
-    displayMessage(message) {
+    displayMessage(data) {
         const messagesContainer = document.getElementById('messagesContainer');
-        const messageElement = this.createMessageElement(message);
+        if (!messagesContainer) return;
         
+        const messageElement = this.createMessageElement(data);
         messagesContainer.appendChild(messageElement);
-        this.scrollToBottom();
+        
+        // Прокрутка вниз
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
         
         // Сохраняем в историю
-        this.saveMessageToHistory(message);
+        this.saveToHistory(data);
     }
     
-    // Создание элемента сообщения
-    createMessageElement(message) {
+    createMessageElement(data) {
         const div = document.createElement('div');
-        const isOwn = message.sender === this.currentUser;
-        const time = new Date(message.timestamp).toLocaleTimeString([], { 
+        const isOwn = data.isOwn || data.sender === this.username;
+        const time = new Date(data.timestamp).toLocaleTimeString([], { 
             hour: '2-digit', 
             minute: '2-digit' 
         });
         
-        div.className = `message ${isOwn ? 'message-out' : 'message-in'}`;
+        div.className = `message-bubble ${isOwn ? 'own' : 'other'}`;
         div.innerHTML = `
-            <div class="message-header">
-                <span class="message-sender">${message.sender}</span>
-                <span class="message-time">${time}</span>
+            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">
+                ${data.sender} • ${time}
             </div>
-            <div class="message-content">${this.escapeHtml(message.content)}</div>
-            ${message.recipient !== 'all' ? 
-                `<div class="message-recipient">→ ${message.recipient}</div>` : ''}
+            <div style="font-size: 16px; line-height: 1.4;">
+                ${this.escapeHtml(data.content)}
+            </div>
+            ${data.recipient !== 'all' ? 
+                `<div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">
+                    → ${data.recipient}
+                </div>` : ''}
         `;
         
         return div;
     }
     
-    // Системное сообщение
     showSystemMessage(text) {
         const messagesContainer = document.getElementById('messagesContainer');
-        const div = document.createElement('div');
+        if (!messagesContainer) return;
         
+        const div = document.createElement('div');
         div.className = 'system-message';
+        div.style.cssText = `
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+            padding: 5px;
+            font-style: italic;
+        `;
         div.textContent = text;
         
         messagesContainer.appendChild(div);
-        this.scrollToBottom();
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
-    // Уведомление (toast)
     showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <span>${message}</span>
-            <button class="notification-close">&times;</button>
-        `;
-        
-        document.querySelector('.notifications').appendChild(notification);
-        
-        notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.remove();
-        });
-        
-        // Автоматическое скрытие через 5 секунд
-        setTimeout(() => notification.remove(), 5000);
+        console.log(`${type.toUpperCase()}: ${message}`);
+        // Можно добавить toast уведомления позже
     }
     
-    // Индикатор набора текста
-    sendTypingIndicator(isTyping) {
-        if (this.isTyping === isTyping) return;
-        
-        this.isTyping = isTyping;
-        
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({
-                type: 'typing',
-                isTyping: isTyping,
-                recipient: this.currentRecipient
-            }));
-        }
-    }
-    
-    showTypingIndicator(username, isTyping) {
-        if (username === this.currentUser) return;
-        
-        const indicator = document.getElementById('typingIndicator');
-        
-        if (isTyping) {
-            indicator.textContent = `${username} печатает...`;
-            indicator.style.opacity = '1';
-        } else {
-            indicator.style.opacity = '0';
-        }
-    }
-    
-    // Обновление списка пользователей
     updateUserList(users) {
         const userList = document.getElementById('userList');
-        const onlineCount = document.getElementById('onlineCount');
+        if (!userList) return;
         
         userList.innerHTML = '';
         
-        // Добавляем "Все"
+        // Добавляем "Все пользователи"
         const allUser = this.createUserElement('all', 'Все пользователи', true);
         userList.appendChild(allUser);
         
-        // Добавляем других пользователей
+        // Добавляем остальных пользователей
         users.forEach(user => {
-            if (user.username !== this.currentUser) {
-                const userElement = this.createUserElement(user.username, user.username, user.online);
+            if (user.username !== this.username) {
+                const userElement = this.createUserElement(
+                    user.username, 
+                    user.username, 
+                    user.online
+                );
                 userList.appendChild(userElement);
             }
         });
         
-        onlineCount.textContent = `${users.filter(u => u.online).length} онлайн`;
+        // Обновляем счетчик онлайн
+        const onlineCount = document.getElementById('onlineCount');
+        if (onlineCount) {
+            const onlineUsers = users.filter(u => u.online).length;
+            onlineCount.textContent = `${onlineUsers} онлайн`;
+        }
     }
     
     createUserElement(username, displayName, isOnline) {
         const div = document.createElement('div');
-        div.className = `user-item ${this.currentRecipient === username ? 'active' : ''}`;
+        div.className = 'user-item';
+        div.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: ${this.currentRecipient === username ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
+        `;
+        
         div.innerHTML = `
-            <div class="user-avatar">
+            <div style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: ${isOnline ? 'linear-gradient(135deg, #4CAF50, #8BC34A)' : 'linear-gradient(135deg, #9E9E9E, #757575)'};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                margin-right: 15px;
+            ">
                 ${displayName.charAt(0).toUpperCase()}
             </div>
-            <div class="user-info">
-                <div class="username">${displayName === 'Все пользователи' ? '@all' : '@' + displayName}</div>
-                <div class="user-status ${isOnline ? 'online' : 'offline'}">
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: white;">
+                    ${displayName === 'Все пользователи' ? '@all' : '@' + displayName}
+                </div>
+                <div style="font-size: 12px; color: ${isOnline ? '#C8E6C9' : '#E0E0E0'};">
                     ${isOnline ? 'в сети' : 'не в сети'}
                 </div>
             </div>
+            ${isOnline ? 
+                `<div style="
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    background: #4CAF50;
+                "></div>` : ''}
         `;
         
         div.addEventListener('click', () => {
@@ -291,76 +286,164 @@ class SecureMessenger {
     
     selectRecipient(username, displayName) {
         this.currentRecipient = username;
+        
+        // Обновляем UI
         const recipientInput = document.getElementById('recipientInput');
+        if (recipientInput) {
+            recipientInput.value = username === 'all' ? '@all' : `@${username}`;
+        }
         
-        recipientInput.value = username === 'all' ? '@all' : `@${username}`;
+        const currentRecipientSpan = document.getElementById('currentRecipient');
+        if (currentRecipientSpan) {
+            currentRecipientSpan.textContent = username === 'all' ? '@all (всем)' : `@${username}`;
+        }
         
-        // Обновляем выделение
-        document.querySelectorAll('.user-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        document.querySelectorAll('.user-item').forEach(item => {
-            if (item.querySelector('.username').textContent === (username === 'all' ? '@all' : `@${username}`)) {
-                item.classList.add('active');
-            }
-        });
-        
-        // Загружаем историю переписки
+        // Перезагружаем историю переписки
         this.loadConversationHistory(username);
+        
+        // Обновляем выделение в списке пользователей
+        this.updateUserSelection();
     }
     
-    // Загрузка истории сообщений
+    updateUserSelection() {
+        // Реализуйте логику выделения активного пользователя
+    }
+    
+    sendTypingIndicator(isTyping) {
+        if (this.isTyping === isTyping) return;
+        
+        this.isTyping = isTyping;
+        
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'typing',
+                sender: this.username,
+                recipient: this.currentRecipient,
+                isTyping: isTyping
+            }));
+        }
+    }
+    
+    showTypingIndicator(sender, isTyping) {
+        const indicator = document.getElementById('typingIndicator');
+        if (!indicator || sender === this.username) return;
+        
+        if (isTyping && sender) {
+            indicator.textContent = `${sender} печатает...`;
+            indicator.style.opacity = '1';
+        } else {
+            indicator.style.opacity = '0';
+        }
+    }
+    
+    sendPing() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'ping' }));
+        }
+    }
+    
+    updateConnectionStatus(connected) {
+        const statusElement = document.getElementById('connectionStatus');
+        if (!statusElement) return;
+        
+        if (connected) {
+            statusElement.innerHTML = '<i class="fas fa-circle" style="color: #4CAF50; margin-right: 5px;"></i> В сети';
+            statusElement.style.color = '#4CAF50';
+        } else {
+            statusElement.innerHTML = '<i class="fas fa-circle" style="color: #F44336; margin-right: 5px;"></i> Нет связи';
+            statusElement.style.color = '#F44336';
+        }
+    }
+    
+    updateCharCount() {
+        const input = document.getElementById('messageInput');
+        const counter = document.getElementById('charCount');
+        if (!input || !counter) return;
+        
+        const count = input.value.length;
+        counter.textContent = count;
+        
+        if (count > 450) {
+            counter.style.color = '#F44336';
+        } else if (count > 400) {
+            counter.style.color = '#FF9800';
+        } else {
+            counter.style.color = '#666';
+        }
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    saveToHistory(message) {
+        // Сохраняем в localStorage для истории
+        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+        history.push({
+            ...message,
+            id: Date.now()
+        });
+        
+        // Храним только последние 500 сообщений
+        if (history.length > 500) {
+            history.splice(0, history.length - 500);
+        }
+        
+        localStorage.setItem('chat_history', JSON.stringify(history));
+    }
+    
+    loadInitialData() {
+        this.loadRecentMessages();
+        this.loadOnlineUsers();
+    }
+    
     async loadRecentMessages() {
         try {
-            const response = await fetch('/api/messages/recent', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('messenger_token')}`
-                }
-            });
+            // Загружаем историю из localStorage
+            const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
             
-            if (response.ok) {
-                const messages = await response.json();
-                messages.forEach(msg => this.displayMessage(msg));
-            }
+            // Показываем последние 50 сообщений
+            const recentMessages = history.slice(-50);
+            recentMessages.forEach(msg => this.displayMessage(msg));
+            
         } catch (error) {
             console.error('Ошибка загрузки сообщений:', error);
         }
     }
     
     async loadConversationHistory(recipient) {
-        try {
-            const response = await fetch(`/api/messages/conversation/${recipient}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('messenger_token')}`
-                }
-            });
-            
-            if (response.ok) {
-                const messages = await response.json();
-                this.displayConversation(messages);
-            }
-        } catch (error) {
-            console.error('Ошибка загрузки переписки:', error);
+        const messagesContainer = document.getElementById('messagesContainer');
+        if (!messagesContainer) return;
+        
+        // Очищаем только если переключились на другого пользователя
+        messagesContainer.innerHTML = '';
+        
+        // Загружаем историю из localStorage
+        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+        
+        // Фильтруем сообщения для этого получателя
+        const conversation = history.filter(msg => 
+            (msg.sender === this.username && msg.recipient === recipient) ||
+            (msg.sender === recipient && msg.recipient === this.username) ||
+            (recipient === 'all' && msg.recipient === 'all')
+        );
+        
+        // Показываем сообщения
+        conversation.forEach(msg => this.displayMessage(msg));
+        
+        if (conversation.length === 0) {
+            this.showSystemMessage(recipient === 'all' ? 
+                'Нет сообщений в общем чате. Будьте первым!' : 
+                `Начните диалог с @${recipient}`
+            );
         }
     }
     
-    displayConversation(messages) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        messagesContainer.innerHTML = '';
-        
-        messages.forEach(msg => this.displayMessage(msg));
-    }
-    
-    // Загрузка онлайн-пользователей
     async loadOnlineUsers() {
         try {
-            const response = await fetch('/api/users/online', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('messenger_token')}`
-                }
-            });
-            
+            const response = await fetch('/api/users');
             if (response.ok) {
                 const users = await response.json();
                 this.updateUserList(users);
@@ -370,246 +453,79 @@ class SecureMessenger {
         }
     }
     
-    // Сохранение сообщений в localStorage
-    saveMessageToHistory(message) {
-        const history = JSON.parse(localStorage.getItem('message_history') || '[]');
-        history.push({
-            ...message,
-            id: Date.now() + Math.random()
-        });
-        
-        // Сохраняем только последние 1000 сообщений
-        if (history.length > 1000) {
-            history.splice(0, history.length - 1000);
-        }
-        
-        localStorage.setItem('message_history', JSON.stringify(history));
-    }
-    
-    // Привязка событий
     bindEvents() {
         // Отправка сообщения
-        document.getElementById('sendButton').addEventListener('click', () => this.sendMessage());
+        const sendButton = document.getElementById('sendButton');
+        const messageInput = document.getElementById('messageInput');
         
-        document.getElementById('messageInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-        
-        // Индикатор набора текста
-        document.getElementById('messageInput').addEventListener('input', () => {
-            this.sendTypingIndicator(true);
+        if (sendButton && messageInput) {
+            sendButton.addEventListener('click', () => this.sendMessage());
             
-            clearTimeout(this.typingTimeout);
-            this.typingTimeout = setTimeout(() => {
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+            
+            messageInput.addEventListener('input', () => {
+                this.sendTypingIndicator(true);
+                
+                clearTimeout(this.typingTimeout);
+                this.typingTimeout = setTimeout(() => {
+                    this.sendTypingIndicator(false);
+                }, 1000);
+                
+                this.updateCharCount();
+            });
+            
+            messageInput.addEventListener('blur', () => {
                 this.sendTypingIndicator(false);
-            }, 1000);
-            
-            this.updateCharCount();
-        });
-        
-        // Выбор получателя
-        document.getElementById('recipientInput').addEventListener('change', (e) => {
-            const value = e.target.value.replace('@', '');
-            this.selectRecipient(value, value);
-        });
-        
-        // Поиск пользователей
-        document.getElementById('searchUsers').addEventListener('input', (e) => {
-            this.filterUsers(e.target.value);
-        });
+            });
+        }
         
         // Выход
-        document.getElementById('logoutButton').addEventListener('click', () => this.logout());
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', () => this.logout());
+        }
         
         // Очистка чата
-        document.getElementById('clearChat').addEventListener('click', () => {
-            if (confirm('Очистить историю чата?')) {
-                localStorage.removeItem('message_history');
-                document.getElementById('messagesContainer').innerHTML = '';
-                this.showNotification('История чата очищена', 'info');
-            }
-        });
+        const clearChatButton = document.getElementById('clearChat');
+        if (clearChatButton) {
+            clearChatButton.addEventListener('click', () => {
+                if (confirm('Очистить историю чата?')) {
+                    localStorage.removeItem('chat_history');
+                    const messagesContainer = document.getElementById('messagesContainer');
+                    if (messagesContainer) {
+                        messagesContainer.innerHTML = '';
+                        this.showSystemMessage('История чата очищена');
+                    }
+                }
+            });
+        }
         
-        // Переключение темы
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            this.toggleTheme();
-        });
+        // Обновление списка пользователей
+        const refreshUsersButton = document.getElementById('refreshUsers');
+        if (refreshUsersButton) {
+            refreshUsersButton.addEventListener('click', () => this.loadOnlineUsers());
+        }
     }
     
-    filterUsers(query) {
-        const userItems = document.querySelectorAll('.user-item');
-        
-        userItems.forEach(item => {
-            const username = item.querySelector('.username').textContent.toLowerCase();
-            if (username.includes(query.toLowerCase()) || query === '') {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
-    
-    // Выход из системы
     logout() {
-        if (this.socket) {
-            this.socket.close();
+        if (confirm('Выйти из аккаунта?')) {
+            window.location.href = '/logout';
         }
-        
-        localStorage.removeItem('messenger_token');
-        localStorage.removeItem('messenger_username');
-        this.redirectToLogin();
-    }
-    
-    redirectToLogin() {
-        window.location.href = '/login.html';
-    }
-    
-    // Обновление интерфейса
-    updateUI() {
-        document.getElementById('currentUsername').textContent = this.currentUser;
-        document.querySelector('.user-avatar.you').textContent = this.currentUser.charAt(0).toUpperCase();
-    }
-    
-    updateConnectionStatus(connected) {
-        const status = document.getElementById('connectionStatus');
-        
-        if (connected) {
-            status.className = 'connection-status connected';
-            status.innerHTML = '<i class="fas fa-wifi"></i> В сети';
-        } else {
-            status.className = 'connection-status disconnected';
-            status.innerHTML = '<i class="fas fa-wifi-slash"></i> Нет связи';
-        }
-    }
-    
-    updateCharCount() {
-        const input = document.getElementById('messageInput');
-        const counter = document.getElementById('charCounter');
-        const count = input.value.length;
-        
-        counter.textContent = `${count}/500`;
-        
-        if (count > 450) {
-            counter.style.color = '#ff6b6b';
-        } else if (count > 400) {
-            counter.style.color = '#ffd166';
-        } else {
-            counter.style.color = '#999';
-        }
-    }
-    
-    scrollToBottom() {
-        const container = document.getElementById('messagesContainer');
-        container.scrollTop = container.scrollHeight;
-    }
-    
-    loadUIState() {
-        const savedTheme = localStorage.getItem('messenger_theme') || 'light';
-        document.body.setAttribute('data-theme', savedTheme);
-    }
-    
-    toggleTheme() {
-        const currentTheme = document.body.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        
-        document.body.setAttribute('data-theme', newTheme);
-        localStorage.setItem('messenger_theme', newTheme);
-    }
-    
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 }
 
 // Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    // Проверяем, находимся ли мы на странице чата
-    if (document.getElementById('messagesContainer')) {
-        window.messenger = new SecureMessenger();
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Проверяем, есть ли пользователь
+    const currentUser = document.querySelector('.username')?.textContent || 
+                       localStorage.getItem('currentUser');
     
-    // Обработка формы входа
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    localStorage.setItem('messenger_token', data.token);
-                    localStorage.setItem('messenger_username', data.user.username);
-                    
-                    window.location.href = '/chat.html';
-                } else {
-                    const error = await response.json();
-                    alert(error.message || 'Ошибка входа');
-                }
-            } catch (error) {
-                alert('Ошибка подключения к серверу');
-            }
-        });
-    }
-    
-    // Обработка формы регистрации
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('regUsername').value;
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
-            
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                if (response.ok) {
-                    alert('Регистрация успешна! Теперь войдите в систему.');
-                    window.location.href = '/login.html';
-                } else {
-                    const error = await response.json();
-                    alert(error.message || 'Ошибка регистрации');
-                }
-            } catch (error) {
-                alert('Ошибка подключения к серверу');
-            }
-        });
+    if (currentUser && window.location.pathname.includes('chat')) {
+        window.chatApp = new ChatApp(currentUser);
     }
 });
-
-// Утилиты для работы с датами
-function formatTime(date) {
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(date) {
-    return new Date(date).toLocaleDateString([], { 
-        day: 'numeric', 
-        month: 'short' 
-    });
-}

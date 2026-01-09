@@ -3,150 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<meta name="theme-color" content="#FFB74D">
-<link rel="manifest" href="/manifest.json">
     <title>Secure Messenger - Безопасный чат</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #FFF9C4 0%, #FFE0B2 33%, #E1BEE7 66%, #ffffff 100%);
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1.hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #BA68C8, #FFB74D);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #795548;
+            margin-bottom: 2.5rem;
+            font-weight: 300;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin-top: 40px;
+        }
+        
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 250px;
+        }
+        
+        .btn i {
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #FFB74D, #BA68C8);
+            color: white;
+            box-shadow: 0 10px 30px rgba(186, 104, 200, 0.2);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(186, 104, 200, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.9);
+            color: #BA68C8;
+            border: 2px solid #E1BEE7;
+        }
+        
+        .btn-secondary:hover {
+            background: #E1BEE7;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            h1.hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Навигация -->
-    <nav class="navbar">
-        <div class="container">
-            <a href="/" class="nav-brand">
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">
                 <i class="fas fa-lock"></i> Secure Messenger
-            </a>
-            <div class="nav-links">
-                <a href="/" class="nav-link">Главная</a>
-                <a href="/login" class="nav-link">Вход</a>
-                <a href="/register" class="nav-link">Регистрация</a>
-                <a href="#" class="nav-link">О проекте</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Герой-секция -->
-    <section class="hero">
-        <div class="container">
-            <h1>Безопасный обмен сообщениями</h1>
-            <p>End-to-end шифрование, защищенные каналы связи и полная конфиденциальность ваших переписок</p>
-            <div class="hero-buttons">
-                <a href="/register" class="btn btn-primary btn-lg">
+            </h1>
+            
+            <p class="hero-subtitle">
+                End-to-end шифрование, защищенные каналы связи 
+                и полная конфиденциальность ваших переписок
+            </p>
+            
+            <div class="cta-container">
+                <a href="/register" class="btn btn-primary">
                     <i class="fas fa-user-plus"></i> Начать бесплатно
                 </a>
-                <a href="/login" class="btn btn-secondary btn-lg">
+                
+                <a href="/login" class="btn btn-secondary">
                     <i class="fas fa-sign-in-alt"></i> Войти в аккаунт
                 </a>
             </div>
-        </div>
-    </section>
-
-    <!-- Функции -->
-    <section class="features">
-        <div class="container">
-            <h2 class="text-center">Почему выбирают нас</h2>
-            <p class="text-center mb-20">Инновационные технологии для вашей безопасности</p>
             
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3>Военное шифрование</h3>
-                    <p>Используем алгоритмы шифрования уровня AES-256 для полной защиты ваших сообщений</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-bolt"></i>
-                    </div>
-                    <h3>Мгновенная доставка</h3>
-                    <p>Сообщения доставляются за доли секунды благодаря оптимизированным протоколам</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <h3>Групповые чаты</h3>
-                    <p>Создавайте защищенные групповые беседы с неограниченным количеством участников</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                    <h3>Кроссплатформенность</h3>
-                    <p>Доступ с любого устройства через веб-интерфейс или нативные приложения</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-history"></i>
-                    </div>
-                    <h3>История сообщений</h3>
-                    <p>Храним ваши переписки с возможностью поиска и фильтрации</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-cloud"></i>
-                    </div>
-                    <h3>Облачное хранилище</h3>
-                    <p>Ваши данные безопасно хранятся в зашифрованном облаке</p>
-                </div>
+            <div style="margin-top: 40px; color: #795548; font-size: 0.9rem;">
+                <p>Безопасный обмен сообщениями | Шифрование AES-256 | Реальное время</p>
             </div>
         </div>
-    </section>
-
-    <!-- Технологии -->
-    <section class="features" style="background: #f8f9fa;">
-        <div class="container">
-            <h2 class="text-center">Технологический стек</h2>
-            <p class="text-center mb-20">Современные технологии для максимальной производительности</p>
-            
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <i class="fab fa-golang fa-3x" style="color: #00ADD8;"></i>
-                    <h3>Go (Golang)</h3>
-                    <p>Высокопроизводительный бэкенд на языке Go</p>
-                </div>
-                
-                <div class="feature-card">
-                    <i class="fab fa-js fa-3x" style="color: #F7DF1E;"></i>
-                    <h3>JavaScript</h3>
-                    <p>Динамический фронтенд на чистом JavaScript</p>
-                </div>
-                
-                <div class="feature-card">
-                    <i class="fab fa-html5 fa-3x" style="color: #E34F26;"></i>
-                    <h3>HTML5 & CSS3</h3>
-                    <p>Современная верстка с адаптивным дизайном</p>
-                </div>
-                
-                <div class="feature-card">
-                    <i class="fas fa-network-wired fa-3x" style="color: #4a6ee0;"></i>
-                    <h3>WebSocket</h3>
-                    <p>Реальное время общения через WebSocket соединения</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Футер -->
-    <footer style="background: #2d3748; color: white; padding: 40px 0;">
-        <div class="container">
-            <div class="text-center">
-                <h3>Secure Messenger</h3>
-                <p>Курсовая работа по разработке защищенной системы обмена сообщениями</p>
-                <p style="margin-top: 20px; opacity: 0.7;">
-                    &copy; 2024 Secure Messenger. Все права защищены.
-                </p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="/static/chat.js"></script>
+    </div>
 </body>
 </html>
