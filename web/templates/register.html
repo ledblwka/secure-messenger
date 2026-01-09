@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Secure Messenger</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-user-plus"></i> Создание аккаунта</h1>
+                <p>Заполните форму для регистрации</p>
+            </div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Имя пользователя
+                    </label>
+                    <input type="text" id="username" class="form-control" 
+                           placeholder="Введите имя пользователя (мин. 3 символа)" 
+                           minlength="3" maxlength="20" required>
+                    <small style="color: #666; font-size: 12px;">Только буквы, цифры и подчеркивания</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-key"></i> Пароль
+                    </label>
+                    <input type="password" id="password" class="form-control" 
+                           placeholder="Введите пароль (мин. 6 символов)" 
+                           minlength="6" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">
+                        <i class="fas fa-key"></i> Подтверждение пароля
+                    </label>
+                    <input type="password" id="confirmPassword" class="form-control" 
+                           placeholder="Повторите пароль" required>
+                    <div id="passwordMatch" style="margin-top: 5px; font-size: 12px;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="terms" required>
+                        <span>Я принимаю <a href="#" style="color: #4a6ee0;">условия использования</a></span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-user-plus"></i> Зарегистрироваться
+                </button>
+            </form>
+            
+            <div id="errorMessage" class="alert alert-error hidden"></div>
+            <div id="successMessage" class="alert alert-success hidden"></div>
+            
+            <div class="auth-footer mt-20">
+                <p>Уже есть аккаунт? <a href="/login" class="auth-link">Войдите</a></p>
+                <p><a href="/" class="auth-link"><i class="fas fa-arrow-left"></i> Вернуться на главную</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Проверка совпадения паролей
+        const passwordInput = document.getElementById('password');
+        const confirmInput = document.getElementById('confirmPassword');
+        const passwordMatchDiv = document.getElementById('passwordMatch');
+        
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const confirm = confirmInput.value;
+            
+            if (confirm === '') {
+                passwordMatchDiv.textContent = '';
+                passwordMatchDiv.style.color = '';
+                return false;
+            }
+            
+            if (password === confirm) {
+                passwordMatchDiv.textContent = '✓ Пароли совпадают';
+                passwordMatchDiv.style.color = '#28a745';
+                return true;
+            } else {
+                passwordMatchDiv.textContent = '✗ Пароли не совпадают';
+                passwordMatchDiv.style.color = '#dc3545';
+                return false;
+            }
+        }
+        
+        passwordInput.addEventListener('input', checkPasswordMatch);
+        confirmInput.addEventListener('input', checkPasswordMatch);
+        
+        // Обработка формы регистрации
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmInput.value;
+            const terms = document.getElementById('terms').checked;
+            
+            // Скрываем старые сообщения
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            
+            // Валидация
+            if (!username || !password || !confirmPassword) {
+                showError('Заполните все поля');
+                return;
+            }
+            
+            if (username.length < 3) {
+                showError('Имя пользователя должно содержать минимум 3 символа');
+                return;
+            }
+            
+            if (!/^[A-Za-z0-9_]+$/.test(username)) {
+                showError('Имя пользователя может содержать только буквы, цифры и подчеркивания');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Пароль должен содержать минимум 6 символов');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showError('Пароли не совпадают');
+                return;
+            }
+            
+            if (!terms) {
+                showError('Необходимо принять условия использования');
+                return;
+            }
+            
+            // Показываем спиннер
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="spinner"></div>';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&confirm_password=${encodeURIComponent(confirmPassword)}`
+                });
+                
+                if (response.ok) {
+                    // Успешная регистрация
+                    showSuccess('Регистрация успешна! Выполняется вход...');
+                    
+                    // Автоматический вход после регистрации
+                    setTimeout(async () => {
+                        try {
+                            const loginResponse = await fetch('/login', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                            });
+                            
+                            if (loginResponse.ok) {
+                                window.location.href = '/';
+                            } else {
+                                window.location.href = '/login';
+                            }
+                        } catch (error) {
+                            window.location.href = '/login';
+                        }
+                    }, 1500);
+                    
+                } else {
+                    const errorText = await response.text();
+                    showError(errorText || 'Ошибка регистрации');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                showError('Ошибка соединения с сервером');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

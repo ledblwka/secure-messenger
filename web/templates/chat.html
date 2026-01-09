@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат - Secure Messenger</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-lock"></i> Secure Messenger
+            </a>
+            <div class="nav-links">
+                <span id="connectionStatus" class="nav-link">
+                    <i class="fas fa-circle" style="color: #28a745; font-size: 12px;"></i> В сети
+                </span>
+                <a href="/logout" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i> Выйти
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контейнер чата -->
+    <div class="chat-container">
+        <!-- Боковая панель с пользователями -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-users"></i> Пользователи</h2>
+                <span id="onlineCount" style="color: #a0aec0; font-size: 14px;">Загрузка...</span>
+            </div>
+            
+            <div class="user-list" id="userList">
+                <!-- Пользователи загружаются через JavaScript -->
+                <div class="spinner"></div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="current-user">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="username">{{.Username}}</div>
+                        <div class="user-status">Вы</div>
+                    </div>
+                </div>
+                <a href="/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Выйти
+                </a>
+            </div>
+        </div>
+        
+        <!-- Основная область чата -->
+        <div class="chat-main">
+            <!-- Заголовок чата -->
+            <div class="chat-header">
+                <div class="chat-info">
+                    <h2><i class="fas fa-comments"></i> Secure Chat</h2>
+                    <div class="chat-controls">
+                        <button id="toggleEncryption" title="Включить/выключить шифрование">
+                            <i class="fas fa-lock-open"></i>
+                        </button>
+                        <button id="clearChat" title="Очистить чат">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button id="refreshUsers" title="Обновить список пользователей">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="color: #666;">
+                    <span id="currentRecipient">@all (всем)</span>
+                    <div class="typing-indicator" id="typingIndicator"></div>
+                </div>
+            </div>
+            
+            <!-- Область сообщений -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Сообщения загружаются через JavaScript -->
+                <div class="system-message">
+                    Загрузка сообщений...
+                </div>
+            </div>
+            
+            <!-- Панель ввода сообщения -->
+            <div class="message-input">
+                <div class="input-group">
+                    <input type="text" id="recipientInput" class="recipient-input" 
+                           placeholder="@username или @all" value="@all">
+                    <input type="text" id="messageInput" class="message-text-input" 
+                           placeholder="Введите сообщение..." maxlength="500">
+                    <button id="sendButton" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <div id="encryptionStatus" class="encryption-status">
+                        <i class="fas fa-lock-open"></i> Шифрование отключено
+                    </div>
+                    <div style="color: #666; font-size: 14px;">
+                        <span id="charCount">0</span>/500
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/chat.js"></script>
+    <script>
+        // Текущий пользователь из шаблона
+        const currentUser = "{{.Username}}";
+        
+        // Инициализация чата при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Создаем экземпляр чата
+            window.chatApp = new ChatApp(currentUser);
+        });
+    </script>
+</body>
+</html>

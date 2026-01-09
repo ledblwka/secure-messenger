@@ -1,0 +1,12 @@
+﻿server:
+  address: ":8080"
+  max_clients: 100
+  timeout: 300
+
+security:
+  min_password_length: 6
+  session_timeout: 3600
+
+logging:
+  level: "info"
+  file: "server.log"

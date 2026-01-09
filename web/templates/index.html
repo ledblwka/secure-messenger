@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Messenger - Безопасный чат</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <i class="fas fa-lock"></i> Secure Messenger
+            </a>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/login" class="nav-link">Вход</a>
+                <a href="/register" class="nav-link">Регистрация</a>
+                <a href="#" class="nav-link">О проекте</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Герой-секция -->
+    <section class="hero">
+        <div class="container">
+            <h1>Безопасный обмен сообщениями</h1>
+            <p>End-to-end шифрование, защищенные каналы связи и полная конфиденциальность ваших переписок</p>
+            <div class="hero-buttons">
+                <a href="/register" class="btn btn-primary btn-lg">
+                    <i class="fas fa-user-plus"></i> Начать бесплатно
+                </a>
+                <a href="/login" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-sign-in-alt"></i> Войти в аккаунт
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Функции -->
+    <section class="features">
+        <div class="container">
+            <h2 class="text-center">Почему выбирают нас</h2>
+            <p class="text-center mb-20">Инновационные технологии для вашей безопасности</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Военное шифрование</h3>
+                    <p>Используем алгоритмы шифрования уровня AES-256 для полной защиты ваших сообщений</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Мгновенная доставка</h3>
+                    <p>Сообщения доставляются за доли секунды благодаря оптимизированным протоколам</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Групповые чаты</h3>
+                    <p>Создавайте защищенные групповые беседы с неограниченным количеством участников</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Кроссплатформенность</h3>
+                    <p>Доступ с любого устройства через веб-интерфейс или нативные приложения</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3>История сообщений</h3>
+                    <p>Храним ваши переписки с возможностью поиска и фильтрации</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <h3>Облачное хранилище</h3>
+                    <p>Ваши данные безопасно хранятся в зашифрованном облаке</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Технологии -->
+    <section class="features" style="background: #f8f9fa;">
+        <div class="container">
+            <h2 class="text-center">Технологический стек</h2>
+            <p class="text-center mb-20">Современные технологии для максимальной производительности</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fab fa-golang fa-3x" style="color: #00ADD8;"></i>
+                    <h3>Go (Golang)</h3>
+                    <p>Высокопроизводительный бэкенд на языке Go</p>
+                </div>
+                
+                <div class="feature-card">
+                    <i class="fab fa-js fa-3x" style="color: #F7DF1E;"></i>
+                    <h3>JavaScript</h3>
+                    <p>Динамический фронтенд на чистом JavaScript</p>
+                </div>
+                
+                <div class="feature-card">
+                    <i class="fab fa-html5 fa-3x" style="color: #E34F26;"></i>
+                    <h3>HTML5 & CSS3</h3>
+                    <p>Современная верстка с адаптивным дизайном</p>
+                </div>
+                
+                <div class="feature-card">
+                    <i class="fas fa-network-wired fa-3x" style="color: #4a6ee0;"></i>
+                    <h3>WebSocket</h3>
+                    <p>Реальное время общения через WebSocket соединения</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Футер -->
+    <footer style="background: #2d3748; color: white; padding: 40px 0;">
+        <div class="container">
+            <div class="text-center">
+                <h3>Secure Messenger</h3>
+                <p>Курсовая работа по разработке защищенной системы обмена сообщениями</p>
+                <p style="margin-top: 20px; opacity: 0.7;">
+                    &copy; 2024 Secure Messenger. Все права защищены.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/chat.js"></script>
+</body>
+</html>
