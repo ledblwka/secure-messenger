@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Secure Messenger</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-user-plus"></i> Регистрация</h1>
+                <p>Создайте новый аккаунт</p>
+            </div>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Имя пользователя
+                    </label>
+                    <input type="text" id="username" name="username" class="form-control" 
+                           placeholder="Придумайте имя" required minlength="3" maxlength="20">
+                    <div style="font-size: 13px; color: #666; margin-top: 5px;">
+                        Только буквы, цифры и подчеркивание
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Пароль
+                    </label>
+                    <input type="password" id="password" name="password" class="form-control" 
+                           placeholder="Создайте пароль" required minlength="6">
+                    <div style="font-size: 13px; color: #666; margin-top: 5px;">
+                        Минимум 6 символов
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">
+                        <i class="fas fa-lock"></i> Подтвердите пароль
+                    </label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" 
+                           placeholder="Повторите пароль" required minlength="6">
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background: #f0f7ff; border-radius: 10px;">
+                    <h4 style="margin: 0 0 10px 0; color: #1a73e8; font-size: 16px;">
+                        <i class="fas fa-shield-alt"></i> Безопасность
+                    </h4>
+                    <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 14px;">
+                        <li>Пароли хранятся в хэшированном виде</li>
+                        <li>Каждому пользователю уникальная соль</li>
+                        <li>Сессионные токены для доступа</li>
+                    </ul>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" id="registerBtn">
+                    <i class="fas fa-user-plus"></i> Зарегистрироваться
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Уже есть аккаунт? <a href="/login" class="auth-link">Войдите</a></p>
+                <p><a href="/" class="auth-link"><i class="fas fa-arrow-left"></i> На главную</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const registerBtn = document.getElementById('registerBtn');
+            
+            // Валидация имени пользователя
+            const usernameRegex = /^[a-zA-Z0-9_]+$/;
+            if (!usernameRegex.test(username)) {
+                alert('Имя пользователя может содержать только буквы, цифры и подчеркивание');
+                return;
+            }
+            
+            if (username.length < 3) {
+                alert('Имя пользователя должно быть не менее 3 символов');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('Пароль должен быть не менее 6 символов');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают');
+                return;
+            }
+            
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Регистрация...';
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Сохраняем сессию
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('sessionToken', data.sessionToken);
+                    
+                    // Устанавливаем куки
+                    document.cookie = `session_token=${data.sessionToken}; path=/; max-age=86400`;
+                    
+                    // Перенаправляем в чат
+                    window.location.href = '/chat';
+                } else {
+                    const error = await response.text();
+                    alert(`Ошибка регистрации: ${error || 'Пользователь уже существует'}`);
+                    registerBtn.disabled = false;
+                    registerBtn.innerHTML = '<i class="fas fa-user-plus"></i> Зарегистрироваться';
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                alert('Ошибка соединения с сервером');
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i class="fas fa-user-plus"></i> Зарегистрироваться';
+            }
+        });
+        
+        // Показывать/скрывать пароль
+        const passwordInputs = document.querySelectorAll('input[type="password"]');
+        passwordInputs.forEach(input => {
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'relative';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+            
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+            toggleBtn.style.cssText = `
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                color: #666;
+                cursor: pointer;
+                padding: 5px;
+            `;
+            
+            toggleBtn.addEventListener('click', function() {
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            });
+            
+            wrapper.appendChild(toggleBtn);
+        });
+    </script>
+</body>
+</html>

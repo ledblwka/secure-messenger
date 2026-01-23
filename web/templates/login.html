@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Secure Messenger</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-sign-in-alt"></i> Вход в Secure Messenger</h1>
+                <p>Введите ваши учетные данные</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Имя пользователя
+                    </label>
+                    <input type="text" id="username" name="username" class="form-control" 
+                           placeholder="Введите ваше имя" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Пароль
+                    </label>
+                    <input type="password" id="password" name="password" class="form-control" 
+                           placeholder="Введите пароль" required minlength="6">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Войти
+                </button>
+                
+                <div style="margin-top: 20px; text-align: center;">
+                    <a href="javascript:void(0)" onclick="showDemoInfo()" style="color: #666; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> Тестовые данные
+                    </a>
+                </div>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Нет аккаунта? <a href="/register" class="auth-link">Зарегистрируйтесь</a></p>
+                <p><a href="/" class="auth-link"><i class="fas fa-arrow-left"></i> На главную</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            if (!username || !password) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Вход...';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Сохраняем сессию
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('sessionToken', data.sessionToken);
+                    
+                    // Устанавливаем куки
+                    document.cookie = `session_token=${data.sessionToken}; path=/; max-age=86400`;
+                    
+                    // Перенаправляем в чат
+                    window.location.href = '/chat';
+                } else {
+                    const error = await response.text();
+                    alert(`Ошибка входа: ${error || 'Неверные учетные данные'}`);
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Войти';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Ошибка соединения с сервером');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Войти';
+            }
+        });
+        
+        function showDemoInfo() {
+            alert('Демо-аккаунт:\n\nИмя пользователя: demo\nПароль: demo123');
+        }
+        
+        // Автозаполнение для демо
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('demo') === 'true') {
+                document.getElementById('username').value = 'demo';
+                document.getElementById('password').value = 'demo123';
+            }
+        });
+    </script>
+</body>
+</html>
